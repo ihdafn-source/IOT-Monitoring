@@ -1,0 +1,16 @@
+[
+    {
+        "chat_id": 1447200589,
+        "nama": "Lala",
+        "username": null,
+        "role": "super_admin",
+        "status": "approved",
+        "notif": true
+    },
+    {
+        "chat_id": 1330926342,
+        "nama": "Angelica",
+        "username": "angelocaaa",
+        "status": "rejected"
+    }
+]

@@ -1,0 +1,80 @@
+version: "3.9"
+
+services:
+
+  # 1. Broker MQTT: Mosquitto
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    container_name: iot_mosquitto
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+    restart: always
+
+
+  # 2. Database Timeseries: InfluxDB
+  influxdb:
+    image: influxdb:2.7
+    container_name: iot_influxdb
+    ports:
+      - "8086:8086"
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: ${INFLUXDB_USERNAME}
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUXDB_PASSWORD}
+      DOCKER_INFLUXDB_INIT_ORG: ${INFLUXDB_ORG}
+      DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUXDB_BUCKET}
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_TOKEN}
+    volumes:
+      - ./influxdb/data:/var/lib/influxdb2
+      - ./influxdb/config:/etc/influxdb2
+    restart: always
+
+
+  # 3. Data Collector: Telegraf
+  telegraf:
+    image: telegraf:latest
+    container_name: iot_telegraf
+    depends_on:
+      - mosquitto
+      - influxdb
+    environment:
+      INFLUXDB_TOKEN: ${INFLUXDB_TOKEN}
+      INFLUXDB_ORG: ${INFLUXDB_ORG}
+      INFLUXDB_BUCKET: ${INFLUXDB_BUCKET}
+    volumes:
+      - ./telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+    restart: always
+
+
+  # 4. Visualisasi Data: Grafana
+  grafana:
+    image: grafana/grafana-oss:latest
+    container_name: iot_grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - influxdb
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
+    volumes:
+      - ./grafana/data:/var/lib/grafana
+    restart: always
+
+
+  # 5. Telegram Flask Bot
+  python:
+    image: python:latest
+    container_name: iot_python
+    working_dir: /app
+    volumes:
+      - ./python:/app
+    command: sh -c "pip install -r requirements.txt && python app.py"
+    ports:
+      - "5000:5000"
+    restart: always
